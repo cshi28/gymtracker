@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Training Tracker · 12-Week Block</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1D5CA8">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
+  }
+</script>
+<style>
+  :root{
+    --ink:#14181C; --grey:#6B7480; --line:#D2D7DC; --hair:#E6E9EC;
+    --blue:#1D5CA8; --blue-soft:#EAF0F6; --orange:#C2571A; --orange-soft:#FBF1E9;
+    --deload:#EEF2F6; --deload-line:#DBE2E9; --warn:#B23127;
+    --paper:#FBFCFD; --card:#FFFFFF;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace;
+    --disp:'Arial Narrow','Helvetica Neue',system-ui,sans-serif;
+    --body:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--body);color:var(--ink);background:var(--paper);
+       font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px 18px 80px}
+
+  /* masthead */
+  .mast{border-bottom:2.5px solid var(--ink);padding-bottom:12px;margin-bottom:18px;
+        display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .ey{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.18em;
+      text-transform:uppercase;color:var(--blue);margin-bottom:4px}
+  h1{font-family:var(--disp);font-weight:700;font-stretch:condensed;font-size:34px;
+     line-height:1;letter-spacing:.01em;text-transform:uppercase;margin:0}
+  .datactl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{font-family:var(--body);font-size:13px;font-weight:600;color:var(--ink);
+       background:var(--card);border:1px solid var(--line);border-radius:7px;
+       padding:7px 12px;cursor:pointer;transition:border-color .12s,background .12s}
+  .btn:hover{border-color:var(--blue)}
+  .btn.warn:hover{border-color:var(--warn);color:var(--warn)}
+  .saved{font-size:12px;color:var(--grey);font-family:var(--mono);white-space:nowrap}
+  .saved b{color:var(--blue)}
+
+  /* scoreboard */
+  .score{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+  .stat{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:14px 16px;
+        border-left:3px solid var(--blue)}
+  .stat.climb{border-left-color:var(--orange)}
+  .stat .lab{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.1em;
+             text-transform:uppercase;color:var(--grey)}
+  .stat .big{font-family:var(--mono);font-size:26px;font-weight:600;margin-top:3px;line-height:1.1}
+  .stat .sub{font-size:12.5px;color:var(--grey);margin-top:2px}
+  .stat .big .arw{font-size:19px;vertical-align:1px}
+  .good{color:var(--blue)} .bad{color:var(--warn)} .flat{color:var(--grey)}
+
+  /* tabs */
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tab{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.05em;
+       text-transform:uppercase;color:var(--grey);background:none;border:none;
+       padding:10px 16px;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px}
+  .tab.on{color:var(--ink);border-bottom-color:var(--blue)}
+  .panel{display:none} .panel.on{display:block}
+
+  /* chart */
+  .chartcard{background:var(--card);border:1px solid var(--hair);border-radius:10px;
+             padding:16px 16px 10px;margin-bottom:18px}
+  .charthead{display:flex;justify-content:space-between;align-items:center;gap:12px;
+             flex-wrap:wrap;margin-bottom:6px}
+  .charthead h2{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:.05em;
+                text-transform:uppercase;margin:0}
+  select{font-family:var(--body);font-size:13px;color:var(--ink);background:var(--card);
+         border:1px solid var(--line);border-radius:7px;padding:6px 10px;cursor:pointer}
+  .chartbox{width:100%;overflow:hidden}
+  svg{display:block;width:100%;height:auto;font-family:var(--body)}
+  .empty{color:var(--grey);font-size:13.5px;padding:26px 4px;text-align:center}
+
+  /* table */
+  .tablecard{background:var(--card);border:1px solid var(--hair);border-radius:10px;
+             overflow:hidden}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:760px}
+  th,td{border-bottom:1px solid var(--hair);padding:0;text-align:center}
+  thead th{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.03em;
+           text-transform:uppercase;color:var(--grey);padding:9px 4px;
+           border-bottom:2px solid var(--ink);white-space:nowrap;background:var(--card);
+           position:sticky;top:0;z-index:2}
+  thead th .tag{display:block;font-size:8.5px;letter-spacing:.06em;color:#9AA3AC;font-weight:700}
+  th.dl,td.dl{background:var(--deload)}
+  thead th.dl{color:var(--blue)} thead th.dl .tag{color:var(--blue)}
+  th.start,td.start{background:var(--blue-soft);border-left:1.5px solid var(--blue);border-right:1.5px solid var(--blue)}
+  thead th.start{color:var(--blue)}
+  th.rowlab,td.rowlab{text-align:left;padding:9px 10px;position:sticky;left:0;background:var(--card);
+                      z-index:1;min-width:150px;box-shadow:1px 0 0 var(--hair)}
+  td.rowlab{font-family:var(--disp);font-weight:700;font-stretch:condensed;font-size:14.5px;
+            line-height:1.12}
+  td.rowlab .rs{display:block;font-family:var(--body);font-weight:400;font-stretch:normal;
+                font-size:10.5px;color:var(--grey);margin-top:1px}
+  tr.climb td.rowlab{box-shadow:inset 3px 0 0 var(--orange),1px 0 0 var(--hair)}
+
+  /* inputs */
+  .cell{width:100%;height:100%}
+  input.v{font-family:var(--mono);font-size:14px;text-align:center;border:none;background:transparent;
+          width:100%;padding:11px 3px;color:var(--ink);min-width:44px}
+  input.v:focus{outline:none;background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px var(--blue)}
+  td.dl input.v:focus{background:#E4E9EE}
+  .pair{display:flex;align-items:center;justify-content:center;gap:1px}
+  input.kg{min-width:38px;text-align:right;padding-right:1px}
+  input.rp{min-width:26px;text-align:left;padding-left:1px;color:var(--grey);font-size:12px}
+  .pair .x{font-size:10px;color:#B9C2CB}
+  input.txt{font-family:var(--body);font-size:12.5px;text-align:center;border:none;background:transparent;
+            width:100%;padding:11px 4px;color:var(--ink);min-width:60px}
+  input.txt:focus{outline:none;background:var(--orange-soft);box-shadow:inset 0 0 0 1.5px var(--orange)}
+  input::placeholder{color:#C4CBD1}
+
+  .note{border-left:3px solid var(--blue);background:var(--blue-soft);border-radius:0 8px 8px 0;
+        padding:11px 14px;font-size:13.5px;margin:18px 0;line-height:1.5}
+  .note b{font-weight:700}
+
+  /* dual chart row */
+  .chartrow{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+  .chartrow .chartcard{margin-bottom:0}
+  .csubhead{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.04em;
+            text-transform:uppercase;color:var(--ink);margin-bottom:2px}
+  .csubhead .cnote{font-family:var(--body);font-weight:400;font-stretch:normal;text-transform:none;
+                   letter-spacing:0;color:var(--grey);font-size:11.5px}
+  @media(max-width:720px){.chartrow{grid-template-columns:1fr}}
+  .legend{font-size:12px;color:var(--grey);margin:10px 2px 0;display:flex;gap:16px;flex-wrap:wrap}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:4px;
+      border:1px solid var(--deload-line);background:var(--deload)}
+  .sw.st{background:var(--blue-soft);border-color:var(--blue)}
+  .foot{margin-top:26px;font-size:12px;color:var(--grey);text-align:center}
+
+  @media(max-width:640px){
+    h1{font-size:27px} .score{grid-template-columns:1fr}
+    .wrap{padding:16px 12px 60px} .mast{align-items:flex-start}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mast">
+    <div>
+      <div class="ey">Gym block · Bouldering · 12-week log</div>
+      <h1>Training Tracker</h1>
+    </div>
+    <div class="datactl">
+      <span class="saved" id="saved">Not saved yet</span>
+      <button class="btn" id="exportBtn">Export backup</button>
+      <button class="btn" id="importBtn">Import backup</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <button class="btn warn" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div class="score" id="score"></div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="body">Body metrics</button>
+    <button class="tab" data-tab="strength">Strength</button>
+  </div>
+
+  <!-- BODY PANEL -->
+  <section class="panel on" id="panel-body">
+    <div class="chartcard">
+      <div class="charthead">
+        <h2>Trend</h2>
+        <select id="bodyMetric"></select>
+      </div>
+      <div class="chartbox" id="bodyChart"></div>
+      <div class="legend">
+        <span><span class="sw st"></span>Start baseline</span>
+        <span><span class="sw"></span>Deload week</span>
+      </div>
+    </div>
+    <div class="tablecard"><div class="scroll"><table id="bodyTable"></table></div></div>
+    <div class="note"><b>Reading the trend.</b> Weigh daily, log the 7-day average here weekly, and compare
+      only those weekly numbers — a 1–1.5&nbsp;kg overnight jump is water. A flat fortnight while the waist drops
+      is recomposition, which is the goal. Drop food by ~100&nbsp;kcal only after the average <b>and</b> the waist
+      have both held for three weeks.</div>
+  </section>
+
+  <!-- STRENGTH PANEL -->
+  <section class="panel" id="panel-strength">
+    <div class="charthead">
+      <h2>Progress by lift</h2>
+      <select id="liftSelect"></select>
+    </div>
+    <div class="chartrow">
+      <div class="chartcard">
+        <div class="csubhead">Weight lifted <span class="cnote">· number above each point = reps</span></div>
+        <div class="chartbox" id="loadChart"></div>
+        <div class="legend"><span><span class="sw"></span>Deload week</span></div>
+      </div>
+      <div class="chartcard">
+        <div class="csubhead">Estimated 1RM <span class="cnote">· load × (1 + reps ÷ 30)</span></div>
+        <div class="chartbox" id="liftChart"></div>
+        <div class="legend"><span>Smooths changing reps into one strength number.</span></div>
+      </div>
+    </div>
+
+    <div class="tablecard"><div class="scroll"><table id="strTable"></table></div></div>
+    <div class="note"><b>Log your best set each week</b> — the heaviest load and the reps you got on it.
+      Pick a lift above to see its trend: the left chart is the weight on the bar, the right is an estimated
+      one-rep max that stays smooth even when your reps change. The climbing row takes whatever grade notation
+      your gym uses.</div>
+  </section>
+
+  <div class="foot">
+    Saves automatically in this browser. Use <b>Export backup</b> to keep a copy or move between devices.
+  </div>
+</div>
+
+<script>
+"use strict";
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const KEY="training-tracker-v1";
+
+// ---- column model ----
+const BODY_COLS=[{k:"start",l:"Start",tag:"baseline",start:true},
+  {k:"w1",l:"W1"},{k:"w2",l:"W2"},{k:"w3",l:"W3"},{k:"w4",l:"W4"},{k:"w5",l:"W5"},{k:"w6",l:"W6"},
+  {k:"w7",l:"W7",tag:"deload",dl:true},
+  {k:"w8",l:"W8"},{k:"w9",l:"W9"},{k:"w10",l:"W10"},{k:"w11",l:"W11"},{k:"w12",l:"W12"},
+  {k:"w13",l:"W13",tag:"deload",dl:true}];
+const STR_COLS=BODY_COLS.filter(c=>!c.start);
+
+const METRICS=[
+  {k:"bw",name:"Bodyweight",sub:"7-day average · kg",unit:"kg"},
+  {k:"waist",name:"Waist",sub:"at navel · cm",unit:"cm"},
+  {k:"hips",name:"Hips",sub:"widest point · cm",unit:"cm"},
+  {k:"thigh",name:"Thigh",sub:"mid · cm · optional",unit:"cm"},
+  {k:"sleep",name:"Avg. sleep",sub:"hours per night",unit:"h"},
+  {k:"energy",name:"Energy",sub:"1–5 subjective",unit:""},
+  {k:"steps",name:"Avg. steps",sub:"per day",unit:""},
+  {k:"notes",name:"Notes",sub:"illness · travel · cycle · stress",text:true}
+];
+const LIFTS=[
+  {k:"squat",name:"Barbell Back Squat",sub:"Day A · main"},
+  {k:"bench",name:"Barbell Bench Press",sub:"Day A"},
+  {k:"pulldown",name:"Lat Pulldown",sub:"Day A"},
+  {k:"cablerow",name:"Seated Cable Row",sub:"Day A"},
+  {k:"rdl",name:"Romanian Deadlift",sub:"Day B · main"},
+  {k:"ohp",name:"Machine Shoulder Press",sub:"Day B"},
+  {k:"csrow",name:"Chest-Supported Row",sub:"Day B"},
+  {k:"incline",name:"Incline DB Press",sub:"Day B"},
+  {k:"legpress",name:"Leg Press",sub:"Day C · main"},
+  {k:"smith",name:"Smith Bench Press",sub:"Day C"},
+  {k:"lunge",name:"DB Walking Lunge",sub:"Day C"},
+  {k:"climb",name:"Hardest boulder sent",sub:"Saturday · grade",text:true}
+];
+const MAIN_LIFTS=["squat","bench","rdl"]; // for scoreboard
+
+// ---- state ----
+let data=load();
+function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r);}catch(e){}return {body:{},str:{}};}
+let saveTimer=null;
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(data));
+    const d=new Date();
+    $("#saved").innerHTML="Saved <b>"+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+"</b>";
+  }catch(e){$("#saved").textContent="Save failed — export a backup";}
+}
+function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(save,250);}
+
+function e1rm(kg,reps){if(!kg||!reps)return null;return kg*(1+reps/30);}
+
+// ---- build body table ----
+function buildBody(){
+  const t=$("#bodyTable");
+  let h="<thead><tr><th class='rowlab'>Metric</th>";
+  BODY_COLS.forEach(c=>{h+=`<th class='${c.start?'start':''} ${c.dl?'dl':''}'>${c.l}${c.tag?`<span class='tag'>${c.tag}</span>`:''}</th>`;});
+  h+="</tr></thead><tbody>";
+  METRICS.forEach(m=>{
+    h+=`<tr><td class='rowlab'>${m.name}<span class='rs'>${m.sub}</span></td>`;
+    BODY_COLS.forEach(c=>{
+      const val=(data.body[m.k]&&data.body[m.k][c.k])||"";
+      const cls=`${c.start?'start':''} ${c.dl?'dl':''}`;
+      if(m.text){
+        h+=`<td class='${cls}'><input class='txt' data-m='${m.k}' data-c='${c.k}' value="${esc(val)}" placeholder="—"></td>`;
+      }else{
+        h+=`<td class='${cls}'><input class='v' inputmode='decimal' data-m='${m.k}' data-c='${c.k}' value="${esc(val)}" placeholder="·"></td>`;
+      }
+    });
+    h+="</tr>";
+  });
+  t.innerHTML=h+"</tbody>";
+  $$("#bodyTable input").forEach(inp=>inp.addEventListener("input",onBodyInput));
+}
+function onBodyInput(e){
+  const m=e.target.dataset.m,c=e.target.dataset.c;
+  (data.body[m]=data.body[m]||{})[c]=e.target.value;
+  queueSave();drawBody();drawScore();
+}
+
+// ---- build strength table ----
+function buildStr(){
+  const t=$("#strTable");
+  let h="<thead><tr><th class='rowlab'>Lift</th>";
+  STR_COLS.forEach(c=>{h+=`<th class='${c.dl?'dl':''}'>${c.l}${c.tag?`<span class='tag'>${c.tag}</span>`:''}</th>`;});
+  h+="</tr></thead><tbody>";
+  LIFTS.forEach(L=>{
+    h+=`<tr class='${L.text?'climb':''}'><td class='rowlab'>${L.name}<span class='rs'>${L.sub}</span></td>`;
+    STR_COLS.forEach(c=>{
+      const cell=(data.str[L.k]&&data.str[L.k][c.k])||{};
+      const cls=c.dl?'dl':'';
+      if(L.text){
+        h+=`<td class='${cls}'><input class='txt' data-l='${L.k}' data-c='${c.k}' data-f='grade' value="${esc(cell.grade||'')}" placeholder="—"></td>`;
+      }else{
+        h+=`<td class='${cls}'><div class='pair'>`+
+           `<input class='v kg' inputmode='decimal' data-l='${L.k}' data-c='${c.k}' data-f='kg' value="${esc(cell.kg||'')}" placeholder='kg'>`+
+           `<span class='x'>×</span>`+
+           `<input class='v rp' inputmode='numeric' data-l='${L.k}' data-c='${c.k}' data-f='reps' value="${esc(cell.reps||'')}" placeholder='r'>`+
+           `</div></td>`;
+      }
+    });
+    h+="</tr>";
+  });
+  t.innerHTML=h+"</tbody>";
+  $$("#strTable input").forEach(inp=>inp.addEventListener("input",onStrInput));
+}
+function onStrInput(e){
+  const l=e.target.dataset.l,c=e.target.dataset.c,f=e.target.dataset.f;
+  const row=(data.str[l]=data.str[l]||{});
+  const cell=(row[c]=row[c]||{});
+  cell[f]=e.target.value;
+  queueSave();
+  drawLoad();drawLift();drawScore();
+}
+
+function esc(s){return String(s).replace(/"/g,"&quot;").replace(/</g,"&lt;");}
+
+// ---- charts (hand-drawn SVG) ----
+function lineChart(el, pts, cols, opt){
+  // pts: array aligned to cols, value or null. opt:{unit,color,invert}
+  const W=760,H=260,padL=46,padR=14,padT=14,padB=30;
+  const vals=pts.filter(v=>v!=null&&!isNaN(v));
+  if(vals.length<1){el.innerHTML=`<div class='empty'>No data yet — log a value to see the trend.</div>`;return;}
+  let mn=Math.min(...vals),mx=Math.max(...vals);
+  if(mn===mx){mn-=1;mx+=1;}
+  const pad=(mx-mn)*0.12||1; mn-=pad; mx+=pad;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const x=i=>padL+(cols.length<=1?iw/2:iw*i/(cols.length-1));
+  const y=v=>padT+ih-ih*(v-mn)/(mx-mn);
+  const col=opt.color||"#1D5CA8";
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="progress chart">`;
+  // deload bands
+  cols.forEach((c,i)=>{if(c.dl){const bw=iw/(cols.length-1)*0.7;s+=`<rect x="${x(i)-bw/2}" y="${padT}" width="${bw}" height="${ih}" fill="#EEF2F6"/>`;}});
+  // start band
+  cols.forEach((c,i)=>{if(c.start){const bw=iw/(cols.length-1)*0.7;s+=`<rect x="${x(i)-bw/2}" y="${padT}" width="${bw}" height="${ih}" fill="#EAF0F6"/>`;}});
+  // y gridlines (4)
+  for(let g=0;g<=4;g++){const gv=mn+(mx-mn)*g/4,gy=y(gv);
+    s+=`<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="#EEF1F4"/>`;
+    s+=`<text x="${padL-6}" y="${gy+3.5}" text-anchor="end" font-size="10" fill="#9AA3AC" font-family="var(--mono)">${fmt(gv)}</text>`;}
+  // x labels
+  cols.forEach((c,i)=>{s+=`<text x="${x(i)}" y="${H-9}" text-anchor="middle" font-size="9.5" fill="${c.dl?'#1D5CA8':'#9AA3AC'}">${c.l}</text>`;});
+  // line segments (break on null)
+  let dpath="",started=false;
+  pts.forEach((v,i)=>{if(v==null||isNaN(v)){started=false;return;}
+    dpath+=(started?" L":" M")+x(i)+" "+y(v);started=true;});
+  s+=`<path d="${dpath}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // points
+  pts.forEach((v,i)=>{if(v==null||isNaN(v))return;
+    s+=`<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="#fff" stroke="${col}" stroke-width="2"/>`;
+    if(opt.annotate&&opt.annotate[i]!=null)
+      s+=`<text x="${x(i)}" y="${y(v)-8}" text-anchor="middle" font-size="9.5" fill="#6B7480" font-family="var(--mono)">${opt.annotate[i]}</text>`;});
+  s+=`</svg>`;
+  el.innerHTML=s;
+}
+function fmt(v){return Math.abs(v)>=100?Math.round(v):(Math.round(v*10)/10);}
+
+function drawBody(){
+  const mk=$("#bodyMetric").value;
+  const m=METRICS.find(x=>x.k===mk);
+  const pts=BODY_COLS.map(c=>{const raw=data.body[mk]&&data.body[mk][c.k];const n=parseFloat(raw);return isNaN(n)?null:n;});
+  lineChart($("#bodyChart"),pts,BODY_COLS,{unit:m.unit});
+}
+function drawLift(){
+  const lk=$("#liftSelect").value;
+  const pts=STR_COLS.map(c=>{const cell=data.str[lk]&&data.str[lk][c.k];if(!cell)return null;
+    return e1rm(parseFloat(cell.kg),parseFloat(cell.reps));});
+  lineChart($("#liftChart"),pts,STR_COLS,{unit:"kg",color:"#1D5CA8"});
+}
+
+// ---- per-lift trend ----
+function loadSeries(lk){return STR_COLS.map(c=>{const cell=data.str[lk]&&data.str[lk][c.k];const n=cell?parseFloat(cell.kg):NaN;return isNaN(n)?null:n;});}
+function repSeries(lk){return STR_COLS.map(c=>{const cell=data.str[lk]&&data.str[lk][c.k];const n=cell?parseInt(cell.reps,10):NaN;return isNaN(n)?null:n;});}
+function drawLoad(){
+  const lk=$("#liftSelect").value;
+  lineChart($("#loadChart"),loadSeries(lk),STR_COLS,{color:"#1D5CA8",annotate:repSeries(lk)});
+}
+
+// ---- scoreboard ----
+function firstLast(arr){const f=arr.find(v=>v!=null);let l=null;for(let i=arr.length-1;i>=0;i--){if(arr[i]!=null){l=arr[i];break;}}return [f,l];}
+function drawScore(){
+  const el=$("#score");
+  const bwCols=BODY_COLS.map(c=>{const r=data.body.bw&&data.body.bw[c.k];const n=parseFloat(r);return isNaN(n)?null:n;});
+  const [bwF,bwL]=firstLast(bwCols);
+  // strength: average load change across the main lifts (composition-robust)
+  const deltas=[];
+  MAIN_LIFTS.forEach(lk=>{const [f,l]=firstLast(loadSeries(lk));if(f!=null&&l!=null)deltas.push(l-f);});
+  el.innerHTML=
+    statCard("Bodyweight",bwF,bwL,"kg",true)+
+    strengthCard(deltas);
+}
+function strengthCard(deltas){
+  if(!deltas.length)
+    return `<div class='stat'><div class='lab'>Main lifts · avg load</div><div class='big flat'>—</div>
+      <div class='sub'>Log two weeks of a main lift to see change.</div></div>`;
+  const avg=deltas.reduce((a,b)=>a+b,0)/deltas.length;
+  const flat=Math.abs(avg)<1e-9, cls=flat?"flat":(avg>0?"good":"bad"), arw=flat?"→":(avg>0?"↑":"↓"), sign=avg>0?"+":"";
+  return `<div class='stat'><div class='lab'>Main lifts · avg load</div>
+    <div class='big ${cls}'><span class='arw'>${arw}</span> ${sign}${fmt(avg)}<span class='sub' style='font-size:13px'> kg</span></div>
+    <div class='sub'>average change across squat, bench &amp; RDL</div></div>`;
+}
+function statCard(lab,f,l,unit,lowerBetter){
+  if(f==null||l==null){
+    return `<div class='stat'><div class='lab'>${lab}</div><div class='big flat'>—</div>
+      <div class='sub'>Log at least two entries to see change.</div></div>`;
+  }
+  const d=l-f, pct=f?d/f*100:0;
+  const improved = lowerBetter? d<0 : d>0;
+  const flat=Math.abs(d)<1e-9;
+  const cls=flat?"flat":(improved?"good":"bad");
+  const arw=flat?"→":(d>0?"↑":"↓");
+  const sign=d>0?"+":"";
+  const pctTxt = lowerBetter? "" : ` <span class='sub' style='font-size:13px'>(${sign}${pct.toFixed(1)}%)</span>`;
+  return `<div class='stat ${lab.includes('strength')?'':''}'>
+    <div class='lab'>${lab}</div>
+    <div class='big ${cls}'><span class='arw'>${arw}</span> ${fmt(l)}<span class='sub' style='font-size:13px'> ${unit}</span></div>
+    <div class='sub'>from ${fmt(f)} ${unit} · ${sign}${fmt(d)} ${unit}${lowerBetter?'':pctTxt}</div>
+  </div>`;
+}
+
+// ---- selectors ----
+function fillSelectors(){
+  $("#bodyMetric").innerHTML=METRICS.filter(m=>!m.text).map(m=>`<option value='${m.k}'>${m.name}</option>`).join("");
+  $("#liftSelect").innerHTML=LIFTS.filter(l=>!l.text).map(l=>`<option value='${l.k}'>${l.name}</option>`).join("");
+  $("#bodyMetric").addEventListener("change",drawBody);
+  $("#liftSelect").addEventListener("change",()=>{drawLoad();drawLift();});
+}
+
+// ---- tabs ----
+$$(".tab").forEach(t=>t.addEventListener("click",()=>{
+  $$(".tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
+  $$(".panel").forEach(p=>p.classList.remove("on"));
+  $("#panel-"+t.dataset.tab).classList.add("on");
+  if(t.dataset.tab==="body")drawBody();else {drawLoad();drawLift();}
+}));
+
+// ---- export / import / reset ----
+$("#exportBtn").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  const d=new Date().toISOString().slice(0,10);
+  a.href=URL.createObjectURL(blob);a.download=`training-tracker-${d}.json`;a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("#importBtn").addEventListener("click",()=>$("#importFile").click());
+$("#importFile").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result);
+    if(!j||typeof j!=="object")throw 0;
+    data={body:j.body||{},str:j.str||{}};
+    save();buildBody();buildStr();drawBody();drawLoad();drawLift();drawScore();
+  }catch(err){alert("That file could not be read as a tracker backup.");}
+  e.target.value="";};
+  r.readAsText(f);
+});
+$("#resetBtn").addEventListener("click",()=>{
+  if(!confirm("Clear all logged data? Export a backup first if you want to keep it."))return;
+  data={body:{},str:{}};save();buildBody();buildStr();drawBody();drawLoad();drawLift();drawScore();
+});
+
+// ---- init ----
+fillSelectors();buildBody();buildStr();drawBody();drawLoad();drawLift();drawScore();
+if(localStorage.getItem(KEY))save();
+</script>
+</body>
+</html>
